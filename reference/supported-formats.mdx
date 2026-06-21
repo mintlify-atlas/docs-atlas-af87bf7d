@@ -1,5 +1,5 @@
 ---
-title: "Supported Formats and Quality Options Reference"
+title: "Omniform Supported Formats and Quality Options Reference"
 sidebarTitle: "Formats"
 description: "Complete reference for all video and audio output formats and quality levels supported by Omniform, including the yt-dlp arguments used internally."
 ---
@@ -40,11 +40,11 @@ Video quality is expressed as a maximum resolution. Omniform translates each opt
 
 Audio quality maps to yt-dlp's `--audio-quality` flag, which uses VBR level numbers where **0 is best** and **10 is worst**. Omniform exposes three presets covering the most practical range.
 
-| Value  | Label  | yt-dlp `--audio-quality` | Approximate bitrate |
-| ------ | ------ | ------------------------- | ------------------- |
-| high   | High   | 0 (VBR best)              | ~320 kbps           |
-| medium | Medium | 2                         | ~160 kbps           |
-| low    | Low    | 5                         | ~96 kbps            |
+| Value  | Label              | yt-dlp `--audio-quality` | Approximate bitrate |
+| ------ | ------------------ | ------------------------- | ------------------- |
+| high   | High (320kbps)     | 0 (VBR best)              | ~320 kbps           |
+| medium | Medium (160kbps)   | 2                         | ~160 kbps           |
+| low    | Low (96kbps)       | 5                         | ~96 kbps            |
 
 <Note>
   The exact bitrate depends on the source material and codec. VBR quality level
@@ -75,7 +75,15 @@ The `OutputFormat` and `Quality` union types in `src/types/index.ts` are the sin
 ```typescript
 type OutputFormat = "mp4" | "mp3" | "wav" | "flac" | "m4a" | "webm" | "ogg";
 
-type Quality = "best" | "1080p" | "720p" | "480p" | "high" | "medium" | "low";
+type Quality =
+  | "best"
+  | "1080p"
+  | "720p"
+  | "480p"
+  | "audio-only"
+  | "high"
+  | "medium"
+  | "low";
 ```
 
 <Warning>

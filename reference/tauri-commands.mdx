@@ -1,5 +1,5 @@
 ---
-title: "Tauri IPC Command Reference for Omniform"
+title: "Omniform Tauri IPC Commands — Backend API Reference"
 sidebarTitle: "Tauri Commands"
 description: "Full reference for the five Tauri IPC commands exposed by the Omniform Rust backend, with parameters, return types, and usage examples."
 ---
@@ -128,7 +128,9 @@ The spawned process is tracked internally by `id` so it can be cancelled with [`
 
 <ParamField body="quality" type="string" required>
   The desired quality preset. Video formats accept `best`, `1080p`, `720p`, or
-  `480p`. Audio formats accept `high`, `medium`, or `low`. See
+  `480p`. Audio formats accept `high`, `medium`, or `low`. The `audio-only`
+  value is also part of the `Quality` type but is used internally to represent
+  quality-agnostic audio extraction — pair it with an audio format only. See
   [Supported Formats](/reference/supported-formats) for the yt-dlp arguments
   each value maps to.
 </ParamField>

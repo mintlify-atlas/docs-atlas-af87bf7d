@@ -1,7 +1,7 @@
 ---
-title: "Output Formats and Quality Settings in Omniform"
+title: "Video and Audio Output Formats and Quality in Omniform"
 sidebarTitle: "Formats & Quality"
-description: "Every video and audio format Omniform supports, with quality options and guidance on choosing the right combination for your use case."
+description: "Every video and audio format Omniform supports, quality options for each, and the yt-dlp arguments used to produce each output file."
 ---
 
 Omniform supports seven output formats split between video and audio. Choosing the right format and quality depends on how you plan to use the file — whether that is sharing a clip, archiving a recording, playing music offline, or embedding media on a website. This page describes every available option and the yt-dlp arguments Omniform uses to achieve each one.
@@ -19,14 +19,14 @@ Select a video format — **MP4** or **WebM** — to download a file that contai
 
 <Tabs>
   <Tab title="MP4">
-    **MP4** is the most universally compatible container format. Omniform instructs yt-dlp to fetch the best available MP4 video stream and an M4A audio stream, then merges them with ffmpeg into a single `.mp4` file using H.264 video and AAC audio.
+    **MP4** is the most universally compatible container format. Omniform instructs yt-dlp to fetch the best available MP4 video stream (`[ext=mp4]`) and an M4A audio stream (`[ext=m4a]`), then merges them with ffmpeg into a single `.mp4` file using `--merge-output-format mp4`.
 
     MP4 is the right choice for most users — it plays on every major operating system, media player, phone, and smart TV without additional codecs.
   </Tab>
   <Tab title="WebM">
-    **WebM** is an open container format built for the web. It uses VP9 video encoding. WebM files are well-suited for web embedding via `<video>` tags and are natively supported by all modern browsers.
+    **WebM** is an open container format built for the web. Omniform instructs yt-dlp to download the best available streams and re-mux them into a `.webm` container using `--merge-output-format webm`. WebM files are well-suited for web embedding via `<video>` tags and are natively supported by all modern browsers.
 
-    WebM files may not play in older media players or on some devices that lack VP9 support.
+    WebM files may not play in older media players or on devices with limited codec support.
   </Tab>
 </Tabs>
 

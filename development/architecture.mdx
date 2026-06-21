@@ -1,5 +1,5 @@
 ---
-title: "Omniform Architecture: Tauri, Rust, and React"
+title: "Omniform Architecture: Tauri v2, Rust Backend, and React UI"
 sidebarTitle: "Architecture"
 description: "How Omniform is structured: the Rust backend with Tauri IPC commands, the React frontend, and the real-time event system that connects them."
 ---
@@ -44,9 +44,10 @@ Rust: lib.rs → downloads::start_download()
   → stores child in DownloadRegistry (keyed by id)
   → streams stdout, parses OMNIFORM_PROGRESS lines
   → emits "download://progress" { id, progress, speed, eta, status }
-      (status transitions: "downloading" → "converting" → "done")
-  → on success: emits "download://done" { id, outputPath }
-  → on failure: emits "download://error" { id, message }
+      (status transitions: "fetching-info" → "downloading" → "converting" → "done")
+  → on success: emits progress { status: "done", progress: 100 }, then "download://done" { id, outputPath }
+  → on non-zero exit with stderr: emits "download://error" { id, message }
+  → on non-zero exit with empty stderr (cancelled): no error event emitted
 
 Frontend: useDownloadQueue event listeners
   → listen("download://info")     → setItems() updates title and thumbnail
@@ -74,7 +75,7 @@ All five commands are registered in `lib.rs` via `tauri::generate_handler!` and 
     Accepts `{ id, url, format, quality, outputDir }`. Runs a pre-flight `yt-dlp --dump-json` call, then spawns the full download process. Registers the child process in the `DownloadRegistry` so it can be cancelled. Emits the full sequence of `download://` events until the process exits.
   </Card>
   <Card title="cancel_download" icon="stop">
-    Accepts `{ id }`. Looks up the child process in the `DownloadRegistry` by ID, calls `kill()` on it, and removes it from the registry. The frontend sets the item's status to `"cancelled"` optimistically before the kill completes.
+    Accepts `{ id }`. Looks up the child process in the `DownloadRegistry` by ID, calls `kill()` on it, and removes it from the registry. Once the command resolves, the frontend sets the item's status to `"cancelled"`.
   </Card>
 </CardGroup>
 

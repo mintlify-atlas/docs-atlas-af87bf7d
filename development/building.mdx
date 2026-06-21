@@ -1,7 +1,7 @@
 ---
-title: "Build Omniform for Production Distribution"
+title: "Build Omniform for Production: Installers and Release"
 sidebarTitle: "Building"
-description: "Compile and package Omniform into a native installer for Windows, macOS, or Linux using the Tauri CLI build command."
+description: "Compile and package Omniform into a native installer for Windows, macOS, or Linux using the Tauri CLI and the size-optimised Cargo release profile."
 ---
 
 Omniform uses the Tauri CLI to compile the Rust backend and bundle the React frontend into a native installer. The build process has two stages that run back-to-back: first the frontend is compiled by TypeScript and Vite into static assets, then Cargo compiles the Rust backend in release mode, and finally Tauri bundles everything into the installer format that is native to the platform you build on.

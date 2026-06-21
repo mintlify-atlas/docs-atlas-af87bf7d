@@ -1,7 +1,7 @@
 ---
-title: "Downloading Video and Audio with Omniform"
+title: "Downloading Video and Audio Files with Omniform App"
 sidebarTitle: "Downloading"
-description: "How to paste a URL, select format and quality, and add a download to the Omniform queue — including automatic clipboard detection."
+description: "Learn how to paste a URL, pick a format and quality, and add downloads to the Omniform queue — with automatic clipboard detection built in."
 ---
 
 Omniform gives you a straightforward path from URL to finished file: paste a link, choose a format and quality, and click **Add to queue**. From there the app handles everything — fetching metadata, running the download, and converting the file — while keeping you updated with live progress. This page walks through every step of that workflow.
@@ -22,7 +22,7 @@ Omniform uses [yt-dlp](https://github.com/yt-dlp/yt-dlp) under the hood to handl
 
 ## Pasting a URL
 
-At the top of the Omniform window is a text input field with the placeholder **"Paste a YouTube, TikTok, Instagram link..."**. You can type or paste any valid HTTP or HTTPS URL directly into this field. Omniform validates the URL client-side using the pattern `^https?://\S+$` — the **Add to queue** button remains disabled until the field contains a matching URL.
+At the top of the Omniform window is a text input field with the placeholder **"Paste a YouTube, TikTok, Instagram link..."**. You can type or paste any valid HTTP or HTTPS URL directly into this field. The **Add to queue** button remains disabled as long as the URL field is empty; any non-empty string is accepted as input. The entire form — including the URL field, format chips, quality selector, and submit button — is also disabled while Omniform is still setting up its dependencies (yt-dlp and ffmpeg) or while no output folder has been selected yet.
 
 ### Automatic clipboard detection
 

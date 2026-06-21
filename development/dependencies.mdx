@@ -1,5 +1,5 @@
 ---
-title: "How Omniform Manages yt-dlp and ffmpeg"
+title: "How Omniform Downloads and Manages yt-dlp and ffmpeg"
 sidebarTitle: "Dependencies"
 description: "How Omniform automatically downloads and installs yt-dlp and ffmpeg on first launch, where the binaries are stored, and how to change the download sources."
 ---
@@ -8,7 +8,7 @@ Omniform depends on two external tools at runtime: yt-dlp for downloading media 
 
 ## Where binaries are stored
 
-The binaries are stored inside the application's data directory, under a `bin/` subdirectory. The path is resolved at runtime using Tauri's `app_data_dir()` API (from the `dirs` crate), which follows each platform's standard conventions:
+The binaries are stored inside the application's data directory, under a `bin/` subdirectory. The path is resolved at runtime using Tauri's `app_data_dir()` API (via `app.path().app_data_dir()`), which follows each platform's standard conventions:
 
 | Platform | Binary directory |
 |---|---|

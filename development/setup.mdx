@@ -1,7 +1,7 @@
 ---
-title: "Set Up the Omniform Development Environment"
+title: "Set Up the Omniform Development Environment Locally"
 sidebarTitle: "Dev Setup"
-description: "Configure your local machine for Omniform development: install Node.js 18+, Rust via rustup, Tauri prerequisites, and run the app in dev mode."
+description: "Configure your local machine for Omniform development: install Node.js 18+, Rust via rustup, Tauri v2 platform prerequisites, and run the app in dev mode."
 ---
 
 This page covers everything you need to run Omniform locally for development. The stack is Tauri v2 (Rust backend) combined with a React 18 TypeScript frontend built with Vite 6. The Rust side handles all process management, file I/O, and binary downloads; the frontend handles the UI and communicates with Rust over Tauri's IPC bridge. Both halves are compiled and launched together with a single CLI command.
