@@ -1,0 +1,78 @@
+---
+title: "Configuring the Output Folder in Omniform"
+sidebarTitle: "Output Folder"
+description: "How Omniform determines where to save downloaded files, how to change the output folder, and how output filenames are generated."
+---
+
+Omniform saves every downloaded file to a configurable output folder. The folder is displayed in a button at the top of the app window, just above the URL input. It defaults to the system Downloads directory when the app starts, and any folder you pick applies to all subsequent downloads in that session.
+
+<Note>
+  The output folder setting is session-only. Every time you restart Omniform the
+  folder resets to the system Downloads default. There is currently no persistent
+  preference to save a custom path across sessions.
+</Note>
+
+## Default output folder
+
+On startup, Omniform calls the `get_default_output_dir` backend command, which uses Rust's [`dirs`](https://docs.rs/dirs) crate to resolve the system Downloads directory (`dirs::download_dir()`). If no dedicated Downloads folder exists on the system, it falls back to the home directory.
+
+| Platform | Default output path |
+|---|---|
+| Windows | `C:\Users\<username>\Downloads` |
+| macOS | `/Users/<username>/Downloads` |
+| Linux | `/home/<username>/Downloads` (or `$HOME` if no XDG Downloads directory is configured) |
+
+The resolved path is shown in the output folder button before you add any downloads.
+
+## Changing the folder
+
+Click the **output folder button** — the one displaying the current folder path (or "Select a folder..." if no path has been resolved yet) — to open the native directory picker for your operating system.
+
+<Steps>
+  <Step title="Click the output folder button">
+    The button is located in the **Output folder** row above the URL input form. It shows the currently active folder path.
+  </Step>
+  <Step title="Pick a folder">
+    Your operating system's native directory picker opens. Browse to any folder you have write access to and confirm your selection.
+  </Step>
+  <Step title="Confirm">
+    The button label updates immediately to show the new path. All downloads added from this point in the session will be saved to the new folder.
+  </Step>
+</Steps>
+
+Downloads that are already in progress when you change the folder are not affected — they continue writing to the folder that was set when they were added.
+
+<Warning>
+  Make sure the folder you select is writable. If Omniform cannot write to the
+  chosen directory, yt-dlp will exit with an error and the queue item will
+  transition to **Error** status.
+</Warning>
+
+## Filename format
+
+Omniform uses the following yt-dlp output template for every download:
+
+```
+%(title)s.%(ext)s
+```
+
+The full path passed to yt-dlp at download time is:
+
+```
+{output_dir}/%(title)s.%(ext)s
+```
+
+| Template variable | Value |
+|---|---|
+| `%(title)s` | The video's metadata title as returned by the platform |
+| `%(ext)s` | The file extension for the chosen output format (e.g. `mp4`, `mp3`, `flac`) |
+
+Files are saved directly in the selected output folder — no subdirectories are created. yt-dlp's built-in filename sanitization handles special characters, slashes, and other characters that are not valid in filenames on the current operating system.
+
+<Warning>
+  If two downloads produce the same filename — for example, downloading the same
+  video twice in the same format — yt-dlp may overwrite the earlier file or
+  append a counter suffix to avoid the collision, depending on its standard
+  behavior. Omniform does not add any additional deduplication on top of what
+  yt-dlp does natively.
+</Warning>

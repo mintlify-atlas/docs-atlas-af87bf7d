@@ -1,0 +1,65 @@
+---
+title: "Omniform: Video & Audio Downloader for Desktop"
+sidebarTitle: "Introduction"
+description: "Omniform is a native desktop app that downloads and converts video and audio from any yt-dlp-supported platform with zero manual tool setup."
+---
+
+Omniform is a native desktop application for Windows, macOS, and Linux that puts a graphical interface on top of two established command-line tools — [yt-dlp](https://github.com/yt-dlp/yt-dlp) for downloading and [ffmpeg](https://ffmpeg.org) for conversion. Instead of requiring you to install and maintain either tool yourself, Omniform downloads both automatically on its first launch, stores them in its own application data folder, and keeps them completely separate from any system-wide installation. The result is a self-contained downloader that requires no manual configuration: install the app, open it, paste a URL, and pick a format.
+
+## Supported platforms
+
+Omniform supports any website that yt-dlp supports — which covers thousands of video and audio hosting services. The primary tested platforms are:
+
+- **YouTube** — videos, Shorts, playlists
+- **TikTok** — individual posts and profiles
+- **Instagram** — Reels and posts
+- **Any other yt-dlp-supported site** — the full list is maintained at [github.com/yt-dlp/yt-dlp](https://github.com/yt-dlp/yt-dlp#supported-sites)
+
+## Supported output formats
+
+| Category | Formats |
+|----------|---------|
+| Video | MP4, WebM |
+| Audio | MP3, WAV, FLAC, M4A, OGG |
+
+## How it works
+
+Omniform operates through a two-tool pipeline:
+
+1. **yt-dlp** fetches the media stream from the source URL. It handles authentication with the platform, selects the appropriate stream for the requested quality, and writes the raw download to a temporary file.
+2. **ffmpeg** takes that file and re-encodes or remuxes it into the format you selected.
+
+On the very first launch, Omniform checks its application data folder for both binaries. If either is missing, a dependency banner appears at the top of the window and the app downloads the missing tool in the background — yt-dlp from its official GitHub releases, and ffmpeg from a trusted static-build provider for your operating system. Once the download completes, the banner disappears and the app is ready to use. On every subsequent launch, the binaries are already in place and the check completes instantly.
+
+## Key features
+
+<CardGroup cols={2}>
+  <Card title="Native Desktop UI" icon="desktop">
+    A proper graphical application window on Windows, macOS, and Linux — no browser extension, no web app, no command line required.
+  </Card>
+  <Card title="Download Queue" icon="list">
+    Add multiple URLs to the queue and watch each one with real-time progress, download speed, and estimated time remaining.
+  </Card>
+  <Card title="Format & Quality Selection" icon="sliders">
+    Choose the output format and quality per download. Video quality options include Best, 1080p, 720p, and 480p. Audio quality options include High (320 kbps), Medium (160 kbps), and Low (96 kbps).
+  </Card>
+  <Card title="Clipboard Detection" icon="clipboard">
+    Omniform reads your clipboard whenever you focus the app window. Copy a URL from your browser, switch to Omniform, and the URL is already in the input field.
+  </Card>
+  <Card title="Automatic First-Run Setup" icon="wand-magic-sparkles">
+    yt-dlp and ffmpeg are downloaded and configured automatically on first launch. No manual installation, no PATH changes, no version mismatches.
+  </Card>
+  <Card title="Cancel Downloads" icon="circle-stop">
+    Any in-progress download can be cancelled individually from the queue without affecting other active downloads.
+  </Card>
+</CardGroup>
+
+## Usage notice
+
+<Warning>
+  Omniform is intended for downloading content you own or that is explicitly licensed for download. Using it to download third-party content without authorization may violate the terms of service of the source platform and, depending on your jurisdiction, intellectual property law. Use of this tool is the sole responsibility of the person using it.
+</Warning>
+
+## License
+
+Omniform is released under the **GPL-3.0** license.

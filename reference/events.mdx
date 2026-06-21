@@ -1,0 +1,235 @@
+---
+title: "Tauri Event Reference for Omniform"
+sidebarTitle: "Events"
+description: "All Tauri events emitted by the Omniform backend, with event names, payload shapes, and TypeScript listener examples."
+---
+
+The Omniform Rust backend communicates asynchronously with the React frontend via Tauri's event system. Rather than polling or awaiting long-running commands, the frontend subscribes to named event channels and reacts as the backend pushes updates. Subscribe with `listen()` from `@tauri-apps/api/event`. All event payloads are typed in `src/types/index.ts` and referenced throughout this page.
+
+## General listen pattern
+
+Every call to `listen()` returns an `unlisten` function. Always call it when the subscribing component unmounts to avoid memory leaks and stale handlers.
+
+```typescript
+import { listen } from "@tauri-apps/api/event";
+
+const unlisten = await listen<PayloadType>("event://name", (event) => {
+  console.log(event.payload);
+});
+
+// Call unlisten() to unsubscribe (e.g., on component unmount)
+unlisten();
+```
+
+---
+
+## `download://info` {#download-info}
+
+Emitted once per download after yt-dlp's `--dump-json` pass completes and video metadata is available — before the actual download bytes start transferring. Use this event to display the video title and thumbnail in the download queue.
+
+<ResponseField name="id" type="string">
+  The download ID originally passed to `start_download`.
+</ResponseField>
+
+<ResponseField name="title" type="string">
+  The video or track title as reported by yt-dlp.
+</ResponseField>
+
+<ResponseField name="thumbnail" type="string | null">
+  URL of the video thumbnail, or `null` if the platform did not provide one.
+</ResponseField>
+
+```typescript
+import { listen } from "@tauri-apps/api/event";
+import type { DownloadInfoEvent } from "./types";
+
+listen<DownloadInfoEvent>("download://info", (e) => {
+  console.log(e.payload.title, e.payload.thumbnail);
+});
+```
+
+---
+
+## `download://progress` {#download-progress}
+
+Emitted repeatedly during the download lifecycle. This event carries the current progress percentage, transfer speed, estimated time remaining, and a status string. It is also emitted at the very start of a job with `status: "fetching-info"` so the UI can show activity immediately.
+
+<ResponseField name="id" type="string">
+  The download ID originally passed to `start_download`.
+</ResponseField>
+
+<ResponseField name="progress" type="number">
+  Current progress as a value between `0` and `100`. Derived from yt-dlp's
+  `%(progress._percent_str)s` template field.
+</ResponseField>
+
+<ResponseField name="speed" type="string | null">
+  Current transfer speed as a human-readable string, e.g. `"1.50MiB/s"`.
+  `null` when speed data is not yet available.
+</ResponseField>
+
+<ResponseField name="eta" type="string | null">
+  Estimated time remaining as a formatted string, e.g. `"00:30"`. `null` when
+  ETA is not yet calculable.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  One of the `DownloadStatus` string values. Values observed during a normal
+  download lifecycle, in order:
+
+  | Value          | Meaning                                         |
+  | -------------- | ----------------------------------------------- |
+  | `fetching-info`| yt-dlp is retrieving video metadata             |
+  | `downloading`  | Bytes are being transferred                     |
+  | `converting`   | ffmpeg is merging or re-encoding the file       |
+  | `done`         | The output file has been written successfully   |
+</ResponseField>
+
+```typescript
+import { listen } from "@tauri-apps/api/event";
+import type { DownloadProgressEvent } from "./types";
+
+listen<DownloadProgressEvent>("download://progress", (e) => {
+  const { id, progress, speed, eta, status } = e.payload;
+  console.log(`${id}: ${progress}% at ${speed}, ETA ${eta}, status: ${status}`);
+});
+```
+
+---
+
+## `download://done` {#download-done}
+
+Emitted exactly once per download when yt-dlp exits with a zero exit code and the output file has been written to disk. After this event the download is complete and the entry in the queue can be marked done.
+
+<ResponseField name="id" type="string">
+  The download ID originally passed to `start_download`.
+</ResponseField>
+
+<ResponseField name="outputPath" type="string">
+  The absolute path to the directory where the file was saved. This matches the
+  `outputDir` argument provided to `start_download`.
+</ResponseField>
+
+```typescript
+import { listen } from "@tauri-apps/api/event";
+import type { DownloadDoneEvent } from "./types";
+
+listen<DownloadDoneEvent>("download://done", (e) => {
+  console.log(`Download ${e.payload.id} saved to ${e.payload.outputPath}`);
+});
+```
+
+---
+
+## `download://error` {#download-error}
+
+Emitted when yt-dlp exits with a non-zero exit code and its stderr contains an error message. The `message` field contains the raw stderr output and can be shown directly to the user.
+
+<ResponseField name="id" type="string">
+  The download ID originally passed to `start_download`.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  The stderr output captured from the yt-dlp process. Typical causes include
+  invalid URLs, private or geo-restricted videos, and unsupported platforms.
+</ResponseField>
+
+<Note>
+  If the yt-dlp process exits non-zero but with **empty stderr** — for example,
+  when the process is killed by `cancel_download` — no `download://error` event
+  is emitted. Instead, the download status transitions to `"cancelled"`.
+</Note>
+
+```typescript
+import { listen } from "@tauri-apps/api/event";
+import type { DownloadErrorEvent } from "./types";
+
+listen<DownloadErrorEvent>("download://error", (e) => {
+  console.error(`Download ${e.payload.id} failed:`, e.payload.message);
+});
+```
+
+---
+
+## `deps://status` {#deps-status}
+
+Emitted by `ensure_dependencies` during and after the binary setup process. Subscribe to this event before calling `ensure_dependencies` so the UI can display real-time progress as yt-dlp and ffmpeg are downloaded.
+
+<ResponseField name="ytDlpReady" type="boolean">
+  `true` if yt-dlp is present and executable at the time of this event.
+</ResponseField>
+
+<ResponseField name="ffmpegReady" type="boolean">
+  `true` if ffmpeg is present and executable at the time of this event.
+</ResponseField>
+
+<ResponseField name="downloading" type="boolean">
+  `true` while a binary download is actively in progress.
+</ResponseField>
+
+<ResponseField name="message" type="string | null">
+  A human-readable description of the current step, e.g.
+  `"Downloading ffmpeg…"`. `null` when there is nothing to report.
+</ResponseField>
+
+```typescript
+import { listen } from "@tauri-apps/api/event";
+import type { DependencyStatus } from "./types";
+
+listen<DependencyStatus>("deps://status", (e) => {
+  const { ytDlpReady, ffmpegReady, downloading, message } = e.payload;
+  console.log(`yt-dlp: ${ytDlpReady}, ffmpeg: ${ffmpegReady}, message: ${message}`);
+});
+```
+
+---
+
+## TypeScript type definitions
+
+The following interfaces are defined in `src/types/index.ts` and represent the exact payload shapes for each event.
+
+```typescript
+export interface DownloadProgressEvent {
+  id: string;
+  progress: number;
+  speed: string | null;
+  eta: string | null;
+  status: DownloadStatus;
+}
+
+export interface DownloadInfoEvent {
+  id: string;
+  title: string;
+  thumbnail: string | null;
+}
+
+export interface DownloadDoneEvent {
+  id: string;
+  outputPath: string;
+}
+
+export interface DownloadErrorEvent {
+  id: string;
+  message: string;
+}
+
+export interface DependencyStatus {
+  ytDlpReady: boolean;
+  ffmpegReady: boolean;
+  downloading: boolean;
+  message: string | null;
+}
+```
+
+The `DownloadStatus` type used in `DownloadProgressEvent` covers the full lifecycle including terminal states:
+
+```typescript
+export type DownloadStatus =
+  | "queued"
+  | "fetching-info"
+  | "downloading"
+  | "converting"
+  | "done"
+  | "error"
+  | "cancelled";
+```

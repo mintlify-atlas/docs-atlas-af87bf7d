@@ -1,20 +1,58 @@
 ---
-title: "Introduction"
-description: "Welcome to your project"
+title: "Omniform: Download & Convert Video and Audio"
+sidebarTitle: "Home"
+description: "Omniform is a cross-platform desktop app that downloads and converts video and audio from YouTube, TikTok, Instagram, and more — with zero manual setup."
 ---
 
-Write a short description of your product here. What it does, who it's for, and what they can accomplish with it.
+Omniform is a native desktop application that brings the full power of `yt-dlp` and `ffmpeg` to a clean graphical interface. Paste a URL, pick a format and quality, and Omniform handles downloading, converting, and saving — no terminal required.
 
-<Tip>
-  Ready to make this your own? Start by editing this page. Update your `docs.json` file to customize your site. Then fill out the [Quickstart](/quickstart) page.
-</Tip>
+<CardGroup cols={2}>
+  <Card title="Introduction" icon="circle-info" href="/introduction">
+    Learn what Omniform is, how it works, and what platforms and formats it supports.
+  </Card>
+  <Card title="Installation" icon="download" href="/installation">
+    Install the prerequisites and get Omniform running on Windows, macOS, or Linux.
+  </Card>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    From zero to your first download in under five minutes.
+  </Card>
+  <Card title="Formats & Quality" icon="sliders" href="/guides/formats-and-quality">
+    Understand every output format and quality option available in Omniform.
+  </Card>
+</CardGroup>
 
-<Card title="Quickstart" icon="rocket" href="/quickstart">
-  This card links to the quickstart page in your project.
-</Card>
-<Card title="Components" icon="puzzle-piece" href="https://mintlify.com/docs/components">
-  Add cards, callouts, steps, tabs, and more to design and structure your pages.
-</Card>
-<Card title="Settings" icon="gear" href="https://mintlify.com/docs/organize/settings">
-  Set your site name, branding, and navigation in the `docs.json` file.
-</Card>
+## What Omniform does
+
+Omniform wraps two best-in-class command-line tools — `yt-dlp` for downloading and `ffmpeg` for conversion — in a native desktop UI. On first launch it automatically downloads both tools into its own data folder, so there is nothing for you to install or configure manually.
+
+<Steps>
+  <Step title="Paste a URL">
+    Copy a link from YouTube, TikTok, Instagram, or any other supported platform. Omniform detects URLs on your clipboard automatically.
+  </Step>
+  <Step title="Pick a format and quality">
+    Choose a video format (MP4, WebM) or audio format (MP3, WAV, FLAC, M4A, OGG) and a matching quality level.
+  </Step>
+  <Step title="Add to queue">
+    Click **Add to queue**. Omniform fetches the title and thumbnail, then starts downloading with real-time progress, speed, and ETA.
+  </Step>
+  <Step title="Find your file">
+    When the download completes the file is saved to your chosen output folder, ready to use.
+  </Step>
+</Steps>
+
+## Explore the docs
+
+<CardGroup cols={2}>
+  <Card title="Download Queue" icon="list-check" href="/guides/download-queue">
+    Learn how the queue works, how to cancel jobs, and how to clear finished items.
+  </Card>
+  <Card title="Output Folder" icon="folder-open" href="/guides/output-folder">
+    Configure where Omniform saves files and how filenames are determined.
+  </Card>
+  <Card title="Architecture" icon="cubes" href="/development/architecture">
+    Dive into the Tauri + React architecture, Rust commands, and event system.
+  </Card>
+  <Card title="Tauri Commands" icon="terminal" href="/reference/tauri-commands">
+    Full reference for all IPC commands exposed by the Rust backend.
+  </Card>
+</CardGroup>

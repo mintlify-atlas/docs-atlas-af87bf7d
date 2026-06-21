@@ -1,0 +1,101 @@
+---
+title: "Install and Set Up Omniform for Development"
+sidebarTitle: "Installation"
+description: "Install Node.js, Rust, and platform-specific Tauri prerequisites, then run Omniform locally in development mode on Windows, macOS, or Linux."
+---
+
+This page covers setting up the Omniform development environment so you can run the app from source. If you are an end user, you do not need any of this — a pre-built installer for your operating system is all you need to get started. This guide is for contributors and anyone who wants to build, modify, or explore Omniform locally.
+
+## System requirements
+
+Before you begin, make sure the following are installed on your machine:
+
+| Requirement | Version | Notes |
+|-------------|---------|-------|
+| [Node.js](https://nodejs.org) | 18 or later | Required to install frontend dependencies and run the Tauri CLI |
+| [Rust](https://rustup.rs) | Latest stable | Install via rustup; the `cargo` toolchain is required by Tauri |
+| Tauri system prerequisites | — | Differ by operating system — see below |
+
+## Tauri platform prerequisites
+
+Tauri requires a small set of native system libraries and build tools that vary depending on your operating system. Refer to the official Tauri prerequisites guide for the exact packages to install on your platform.
+
+<Tabs>
+  <Tab title="Windows">
+    On Windows, Tauri requires the **Microsoft C++ Build Tools** (or a full Visual Studio installation) and the **WebView2 runtime**. WebView2 ships pre-installed on Windows 10 (version 1803 and later) and Windows 11, so in most cases only the build tools are needed.
+
+    Follow the complete, up-to-date instructions for Windows at the official guide:
+    [https://tauri.app/start/prerequisites/](https://tauri.app/start/prerequisites/)
+  </Tab>
+  <Tab title="macOS">
+    On macOS, Tauri requires **Xcode Command Line Tools**. You can install them by running `xcode-select --install` in a terminal. No additional native libraries are needed because macOS ships with WebKit, which Tauri uses as its webview backend.
+
+    Follow the complete, up-to-date instructions for macOS at the official guide:
+    [https://tauri.app/start/prerequisites/](https://tauri.app/start/prerequisites/)
+  </Tab>
+  <Tab title="Linux">
+    On Linux, Tauri requires several system packages including **webkit2gtk**, **libssl**, **libgtk-3**, and other native libraries. The exact package names differ by distribution (Debian/Ubuntu, Fedora, Arch, etc.).
+
+    Follow the complete, up-to-date instructions for Linux at the official guide:
+    [https://tauri.app/start/prerequisites/](https://tauri.app/start/prerequisites/)
+  </Tab>
+</Tabs>
+
+## Installation steps
+
+<Steps>
+  <Step title="Install Node.js 18+">
+    Download and install Node.js from [nodejs.org](https://nodejs.org). Choose the LTS release unless you have a specific reason to use the current release. Verify the installation:
+
+    ```bash
+    node --version
+    ```
+
+    The output should show `v18.x.x` or higher.
+  </Step>
+  <Step title="Install Rust via rustup">
+    Install the Rust toolchain using the official installer at [rustup.rs](https://rustup.rs). On macOS and Linux, run:
+
+    ```bash
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+    ```
+
+    On Windows, download and run `rustup-init.exe` from [rustup.rs](https://rustup.rs). After installation, verify that `cargo` is on your PATH:
+
+    ```bash
+    cargo --version
+    ```
+  </Step>
+  <Step title="Install Tauri system prerequisites for your OS">
+    Follow the platform-specific instructions at [https://tauri.app/start/prerequisites/](https://tauri.app/start/prerequisites/) for your operating system. This step is mandatory — Tauri's Rust build will fail without the required native libraries and build tools.
+  </Step>
+  <Step title="Clone the repository">
+    ```bash
+    git clone https://github.com/damianiglesias/omniform.git && cd omniform
+    ```
+  </Step>
+  <Step title="Install npm dependencies">
+    From the project root (where `package.json` lives):
+
+    ```bash
+    npm install
+    ```
+
+    This installs the React frontend dependencies, the Tauri CLI, and all other JavaScript tooling.
+  </Step>
+  <Step title="Run in development mode">
+    ```bash
+    npm run tauri dev
+    ```
+
+    Tauri will compile the Rust backend, start the Vite dev server for the frontend, and open the app window. The frontend supports hot-reload — changes to React components are reflected immediately without restarting the process.
+  </Step>
+</Steps>
+
+<Note>
+  On first launch, Omniform will automatically download yt-dlp and ffmpeg into its application data folder. A dependency banner at the top of the window will show the progress. An internet connection is required during this first-run setup. On all subsequent launches the binaries are already in place and the check completes instantly.
+</Note>
+
+## Application data folder
+
+The binaries that Omniform manages (yt-dlp and ffmpeg) are stored in a `bin/` subdirectory inside the OS-specific application data folder. The exact path is resolved at runtime by Tauri's `app_data_dir()` and varies by platform — you do not need to set it manually. Omniform never modifies your system's PATH or installs anything outside its own data folder.

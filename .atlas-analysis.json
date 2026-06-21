@@ -1,0 +1,81 @@
+{
+  "projectType": "saas",
+  "projectName": "Omniform",
+  "projectDescription": "A cross-platform desktop application built with Tauri and React that downloads and converts video and audio from YouTube, TikTok, Instagram, and other platforms into common formats (MP4, WebM, MP3, WAV, FLAC, M4A, OGG) with zero manual tool setup.",
+  "theme": "almond",
+  "primaryColor": "#6C47FF",
+  "lightColor": "#EDE9FF",
+  "darkColor": "#3A1FA8",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "introduction",
+              "installation",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Using Omniform",
+            "pages": [
+              "guides/downloading",
+              "guides/formats-and-quality",
+              "guides/download-queue",
+              "guides/output-folder"
+            ]
+          },
+          {
+            "group": "Development",
+            "pages": [
+              "development/setup",
+              "development/building",
+              "development/architecture",
+              "development/dependencies"
+            ]
+          },
+          {
+            "group": "Reference",
+            "pages": [
+              "reference/supported-formats",
+              "reference/tauri-commands",
+              "reference/events",
+              "reference/troubleshooting"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Download video and audio from YouTube, TikTok, Instagram, and other yt-dlp-supported platforms",
+    "Convert to MP4, WebM, MP3, WAV, FLAC, M4A, or OGG",
+    "Video quality selection: Best, 1080p, 720p, 480p",
+    "Audio bitrate selection: High (320 kbps), Medium (160 kbps), Low (96 kbps)",
+    "Real-time download queue with progress, speed, and ETA indicators",
+    "Automatic first-run download of yt-dlp and ffmpeg — zero manual setup",
+    "Automatic clipboard URL detection on focus",
+    "Cancel in-progress downloads",
+    "Cross-platform: Windows, macOS, Linux",
+    "Native desktop UI built with Tauri v2 and React 18"
+  ],
+  "publicApiSurface": [
+    "check_dependencies() -> DependencyStatus",
+    "ensure_dependencies() -> Result<(), String>",
+    "get_default_output_dir() -> Result<String, String>",
+    "start_download(id, url, format, quality, output_dir) -> Result<(), String>",
+    "cancel_download(id) -> Result<(), String>",
+    "Tauri event: download://progress (ProgressEvent)",
+    "Tauri event: download://info (InfoEvent)",
+    "Tauri event: download://done (DoneEvent)",
+    "Tauri event: download://error (ErrorEvent)",
+    "Tauri event: deps://status (DependencyStatus)",
+    "React hook: useDownloadQueue()",
+    "OutputFormat type: mp4 | webm | mp3 | wav | flac | m4a | ogg",
+    "Quality type: best | 1080p | 720p | 480p | high | medium | low",
+    "DownloadStatus type: queued | fetching-info | downloading | converting | done | error | cancelled"
+  ]
+}

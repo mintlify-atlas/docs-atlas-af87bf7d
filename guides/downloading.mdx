@@ -1,0 +1,84 @@
+---
+title: "Downloading Video and Audio with Omniform"
+sidebarTitle: "Downloading"
+description: "How to paste a URL, select format and quality, and add a download to the Omniform queue — including automatic clipboard detection."
+---
+
+Omniform gives you a straightforward path from URL to finished file: paste a link, choose a format and quality, and click **Add to queue**. From there the app handles everything — fetching metadata, running the download, and converting the file — while keeping you updated with live progress. This page walks through every step of that workflow.
+
+## Supported platforms
+
+Omniform uses [yt-dlp](https://github.com/yt-dlp/yt-dlp) under the hood to handle the actual downloading and media extraction. yt-dlp has broad platform support out of the box, including:
+
+- **YouTube** — videos, shorts, playlists, and live recordings
+- **TikTok** — individual clips and user feeds
+- **Instagram** — reels, posts, and stories
+
+<Info>
+  Any site supported by yt-dlp will work in Omniform. The full list of supported
+  sites is maintained in the [yt-dlp repository](https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md).
+  If yt-dlp can download it from the command line, Omniform can download it too.
+</Info>
+
+## Pasting a URL
+
+At the top of the Omniform window is a text input field with the placeholder **"Paste a YouTube, TikTok, Instagram link..."**. You can type or paste any valid HTTP or HTTPS URL directly into this field. Omniform validates the URL client-side using the pattern `^https?://\S+$` — the **Add to queue** button remains disabled until the field contains a matching URL.
+
+### Automatic clipboard detection
+
+Omniform watches your clipboard so you never have to manually paste. The detection works as follows:
+
+1. When the app first opens, it immediately reads the clipboard.
+2. Each time the Omniform window regains focus, it reads the clipboard again.
+3. If the clipboard contains a valid HTTP or HTTPS URL **and** the URL field is currently empty, Omniform fills it in automatically and shows a **"pasted from clipboard"** badge next to the input.
+
+If you type something in the URL field yourself (clearing the auto-paste), the badge disappears and Omniform will not overwrite your input even if the clipboard changes.
+
+<Tip>
+  Copy a video URL before you open Omniform — the app will detect it the moment
+  the window appears and pre-fill the field for you, saving an extra paste step.
+</Tip>
+
+## Adding to the queue
+
+Once the URL field is populated, select your desired output format and quality (see the [Formats & Quality](/guides/formats-and-quality) guide for a full breakdown), then click **Add to queue**.
+
+<Steps>
+  <Step title="Enter the URL">
+    Paste a URL into the input field, or let Omniform auto-detect it from your clipboard.
+  </Step>
+  <Step title="Choose a format">
+    Select one of the seven available formats from the format chip buttons below the URL field. The format determines whether quality options show video resolutions or audio bitrates.
+  </Step>
+  <Step title="Choose quality">
+    Pick a quality from the dropdown that appears to the right of the format selector. Video formats offer resolution caps; audio formats offer bitrate tiers.
+  </Step>
+  <Step title="Click Add to queue">
+    Click the **Add to queue** button. The item appears immediately in the queue panel below with a status of **Queued**.
+  </Step>
+</Steps>
+
+The URL field clears after a successful submission so you can immediately add another download.
+
+## What happens next
+
+After you add a download, Omniform moves it through a series of statuses automatically. You can watch this progression live in the queue panel.
+
+<CardGroup cols={2}>
+  <Card title="Queued" icon="clock">
+    The item has been added to the queue. Omniform is about to begin processing it.
+  </Card>
+  <Card title="Fetching info" icon="magnifying-glass">
+    Omniform runs yt-dlp with `--dump-json` to retrieve the video's title and thumbnail from the platform before the download begins. The queue item updates with the real title and thumbnail image as soon as this completes.
+  </Card>
+  <Card title="Downloading" icon="arrow-down-to-line">
+    The actual file transfer is in progress. The queue item shows a live progress bar, download speed (e.g. `3.2 MiB/s`), and ETA countdown.
+  </Card>
+  <Card title="Converting" icon="arrows-rotate">
+    yt-dlp has finished downloading and ffmpeg is post-processing the file — merging separate video and audio streams for MP4, or extracting and re-encoding audio for formats like MP3 or FLAC. No user action is needed.
+  </Card>
+</CardGroup>
+
+When conversion finishes the item moves to **Done**, and the file is saved to your configured output folder. If anything goes wrong at any stage, the item transitions to **Error** and displays the error message from yt-dlp's stderr directly in the queue row.
+
+For details on managing items in the queue, cancelling downloads, and clearing finished entries, see the [Download Queue](/guides/download-queue) guide.

@@ -1,0 +1,123 @@
+---
+title: "How Omniform Manages yt-dlp and ffmpeg"
+sidebarTitle: "Dependencies"
+description: "How Omniform automatically downloads and installs yt-dlp and ffmpeg on first launch, where the binaries are stored, and how to change the download sources."
+---
+
+Omniform depends on two external tools at runtime: yt-dlp for downloading media from URLs, and ffmpeg for converting between audio and video formats. Rather than requiring users to install these manually and add them to their system `PATH`, Omniform downloads them automatically the first time it runs and keeps them in its own private data directory — completely separate from any system-wide installation. Users never need to interact with these tools directly.
+
+## Where binaries are stored
+
+The binaries are stored inside the application's data directory, under a `bin/` subdirectory. The path is resolved at runtime using Tauri's `app_data_dir()` API (from the `dirs` crate), which follows each platform's standard conventions:
+
+| Platform | Binary directory |
+|---|---|
+| Windows | `%APPDATA%\omniform\bin\` |
+| macOS | `~/Library/Application Support/omniform/bin/` |
+| Linux | `~/.local/share/omniform/bin/` (XDG base directory) |
+
+The binary filenames are:
+
+| Binary | Unix filename | Windows filename |
+|---|---|---|
+| yt-dlp | `yt-dlp` | `yt-dlp.exe` |
+| ffmpeg | `ffmpeg` | `ffmpeg.exe` |
+
+The `bin/` directory is created on app startup (inside the `setup` closure in `lib.rs`) so that the download functions always have a valid destination.
+
+## Download sources
+
+Because yt-dlp and ffmpeg are fetched from external URLs, the sources are documented here for transparency. The URLs are defined in `src-tauri/src/dependencies.rs`.
+
+**yt-dlp** is always fetched from its official GitHub releases page, selecting the latest stable standalone binary for the current platform:
+
+| Platform | URL |
+|---|---|
+| Windows | `https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe` |
+| macOS | `https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos` |
+| Linux | `https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp` |
+
+**ffmpeg** does not publish a single official standalone binary per platform the way yt-dlp does. The app uses widely trusted community-maintained static builds:
+
+| Platform | Source | Format |
+|---|---|---|
+| Windows | [gyan.dev](https://www.gyan.dev/ffmpeg/builds/) | `.zip` |
+| macOS | [evermeet.cx](https://evermeet.cx/ffmpeg/) | `.zip` |
+| Linux | [johnvansickle.com](https://johnvansickle.com/ffmpeg/) | `.tar.xz` |
+
+## Archive extraction
+
+yt-dlp is a single standalone binary and is written directly to disk after download. ffmpeg is distributed inside an archive and requires extraction.
+
+The app handles both archive formats in memory — no temporary files are written to disk during extraction:
+
+- **zip** (Windows and macOS) — handled by the [`zip`](https://crates.io/crates/zip) crate. The code iterates over archive entries and extracts only the entry whose name ends with `ffmpeg.exe` (Windows) or `/ffmpeg` (macOS), discarding everything else.
+- **tar.xz** (Linux) — the XZ-compressed data is first decoded in memory using the [`xz2`](https://crates.io/crates/xz2) crate, then the resulting TAR stream is walked using the [`tar`](https://crates.io/crates/tar) crate. Only the entry with the filename `ffmpeg` is unpacked.
+
+On Unix platforms (macOS and Linux), after the binary is written the app sets executable permissions (`0o755`) using `std::os::unix::fs::PermissionsExt`.
+
+## Dependency status events
+
+Throughout the setup process, `dependencies.rs` emits `deps://status` events that the frontend listens to via `listen("deps://status")` in `useDownloadQueue`. Each event carries a `DependencyStatus` payload:
+
+```typescript
+interface DependencyStatus {
+  ytDlpReady: boolean;   // true once yt-dlp binary is present and executable
+  ffmpegReady: boolean;  // true once ffmpeg binary is present and executable
+  downloading: boolean;  // true while a download is in progress
+  message: string | null; // human-readable status string, e.g. "Downloading yt-dlp..."
+}
+```
+
+The sequence of events during a typical first-run setup looks like this:
+
+<Steps>
+  <Step title="App starts, check_dependencies is called">
+    `useDownloadQueue` calls `invoke("check_dependencies")` on mount. Both `ytDlpReady` and `ffmpegReady` are `false`. `App.tsx` sees this and calls `ensure_dependencies`.
+  </Step>
+  <Step title="ensure_dependencies begins, yt-dlp download starts">
+    The backend emits `{ ytDlpReady: false, ffmpegReady: false, downloading: true, message: "Downloading yt-dlp..." }`. The `DependencyBanner` component shows this message.
+  </Step>
+  <Step title="yt-dlp installed, ffmpeg download starts">
+    The backend emits `{ ytDlpReady: true, ffmpegReady: false, downloading: true, message: "Downloading ffmpeg..." }`.
+  </Step>
+  <Step title="Setup complete">
+    The backend emits `{ ytDlpReady: true, ffmpegReady: true, downloading: false, message: "Ready." }`. The banner clears and the URL form becomes active.
+  </Step>
+</Steps>
+
+If either download fails, `downloading` is set to `false` and `message` contains the error text. The `DependencyBanner` component renders a Retry button in this state, which calls `ensureDependencies()` again.
+
+## Changing the download sources
+
+If you want to point the app at different binary sources — for example, to vendor the binaries directly into the repository, use an internal mirror, or pin to a specific yt-dlp version — the only file you need to edit is `src-tauri/src/dependencies.rs`. The two functions that control the URLs are:
+
+```rust src-tauri/src/dependencies.rs
+fn yt_dlp_download_url() -> &'static str {
+    if cfg!(target_os = "windows") {
+        "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe"
+    } else if cfg!(target_os = "macos") {
+        "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos"
+    } else {
+        "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp"
+    }
+}
+
+fn ffmpeg_download_url() -> &'static str {
+    if cfg!(target_os = "windows") {
+        "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"
+    } else if cfg!(target_os = "macos") {
+        "https://evermeet.cx/ffmpeg/getrelease/zip"
+    } else {
+        "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz"
+    }
+}
+```
+
+Replace the URL string literals with your own mirror or vendored file URLs. For a vendored binary shipped inside the app bundle, you could skip the download entirely and instead copy the binary from Tauri's resource directory — but that requires changes beyond these two functions.
+
+After editing the file, rebuild the app with `npm run tauri build`.
+
+<Warning>
+  Changing the ffmpeg download URL requires the file served at that URL to match the archive format the extraction code expects: **zip** for Windows and macOS, **tar.xz** for Linux. If the format does not match, the extraction step will fail with an error at runtime. If you need to use a different archive format, you must also update the `install_ffmpeg` function and its helpers (`extract_ffmpeg_zip`, `extract_ffmpeg_tar_xz`) in `dependencies.rs`.
+</Warning>

@@ -1,0 +1,91 @@
+---
+title: "Output Formats and Quality Settings in Omniform"
+sidebarTitle: "Formats & Quality"
+description: "Every video and audio format Omniform supports, with quality options and guidance on choosing the right combination for your use case."
+---
+
+Omniform supports seven output formats split between video and audio. Choosing the right format and quality depends on how you plan to use the file — whether that is sharing a clip, archiving a recording, playing music offline, or embedding media on a website. This page describes every available option and the yt-dlp arguments Omniform uses to achieve each one.
+
+<Note>
+  ffmpeg must be present for format conversion to work. On first launch Omniform
+  automatically downloads and sets up both yt-dlp and ffmpeg. If you see a
+  dependency banner at the top of the app, wait for setup to complete (or click
+  **Retry** if it stalled) before adding downloads.
+</Note>
+
+## Video formats
+
+Select a video format — **MP4** or **WebM** — to download a file that contains both a video track and an audio track. The **Quality** dropdown switches to resolution-based options when any video format is active.
+
+<Tabs>
+  <Tab title="MP4">
+    **MP4** is the most universally compatible container format. Omniform instructs yt-dlp to fetch the best available MP4 video stream and an M4A audio stream, then merges them with ffmpeg into a single `.mp4` file using H.264 video and AAC audio.
+
+    MP4 is the right choice for most users — it plays on every major operating system, media player, phone, and smart TV without additional codecs.
+  </Tab>
+  <Tab title="WebM">
+    **WebM** is an open container format built for the web. It uses VP9 video encoding. WebM files are well-suited for web embedding via `<video>` tags and are natively supported by all modern browsers.
+
+    WebM files may not play in older media players or on some devices that lack VP9 support.
+  </Tab>
+</Tabs>
+
+### Video quality options
+
+| Quality label | Resolution cap | yt-dlp format selector |
+|---|---|---|
+| Best available | None — highest resolution the platform offers | `bestvideo[ext=mp4]+bestaudio[ext=m4a]/best` |
+| 1080p | Height ≤ 1080 px | `bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/best[height<=1080]` |
+| 720p | Height ≤ 720 px | `bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[height<=720]` |
+| 480p | Height ≤ 480 px | `bestvideo[height<=480][ext=mp4]+bestaudio[ext=m4a]/best[height<=480]` |
+
+For all video quality levels, the `-f` flag passes the format selector to yt-dlp, and `--merge-output-format` ensures the final container is the format you chose (e.g. `mp4`).
+
+## Audio formats
+
+Select an audio format to extract only the audio track from the source video. Omniform passes the `-x` (extract audio) and `--audio-format` flags to yt-dlp, which handles the extraction and re-encoding via ffmpeg. The **Quality** dropdown switches to bitrate-based options when any audio format is active.
+
+<Tabs>
+  <Tab title="MP3">
+    **MP3** (MPEG Audio Layer III) is the most universally compatible audio format. It is supported by every device, media player, and streaming platform. MP3 is the best default choice for music, podcasts, and general audio use.
+  </Tab>
+  <Tab title="WAV">
+    **WAV** stores uncompressed PCM audio — every sample is preserved exactly as encoded. WAV files produce the largest file sizes but are completely lossless and require no decoding overhead. Use WAV when you need the raw audio for further editing or professional processing.
+  </Tab>
+  <Tab title="FLAC">
+    **FLAC** (Free Lossless Audio Codec) compresses audio without any quality loss. FLAC files are significantly smaller than WAV while remaining bit-for-bit identical to the source. This makes FLAC the practical choice for archiving: lossless quality at a reasonable file size.
+  </Tab>
+  <Tab title="M4A">
+    **M4A** wraps AAC audio in an MPEG-4 container. It is natively supported across the Apple ecosystem (iPhone, iPad, macOS, iTunes, Apple Music) and widely supported elsewhere. M4A offers better audio quality than MP3 at equivalent bitrates.
+  </Tab>
+  <Tab title="OGG">
+    **OGG** uses Vorbis audio encoding in an Ogg container. It is a fully open format with no licensing restrictions. OGG is popular for web audio and game development, and is well supported in browsers via the Web Audio API and `<audio>` tags.
+  </Tab>
+</Tabs>
+
+### Audio quality options
+
+Audio quality maps to yt-dlp's VBR (variable bitrate) quality scale via `--audio-quality`:
+
+| Quality label | yt-dlp quality value | Approximate bitrate |
+|---|---|---|
+| High (320kbps) | `0` (best) | ~320 kbps |
+| Medium (160kbps) | `2` | ~160 kbps |
+| Low (96kbps) | `5` | ~96 kbps |
+
+Lower quality values on the VBR scale mean higher quality audio. A value of `0` instructs the encoder to use the best quality it can achieve, which typically results in a bitrate around 320 kbps for MP3.
+
+## Choosing the right combination
+
+| Use case | Recommended format | Recommended quality |
+|---|---|---|
+| Music library (lossless archive) | FLAC | High |
+| Music library (space-efficient) | MP3 | High (320kbps) |
+| Podcast or spoken audio | MP3 | Medium (160kbps) |
+| Raw audio for editing/DAW | WAV | High |
+| Apple devices / iTunes | M4A | High |
+| Web or game audio | OGG | Medium (160kbps) |
+| Video — general sharing | MP4 | Best available |
+| Video — smaller file size | MP4 | 720p |
+| Video — web embedding | WebM | Best available |
+| Video — archiving | MP4 | Best available |

@@ -1,0 +1,120 @@
+---
+title: "Omniform Architecture: Tauri, Rust, and React"
+sidebarTitle: "Architecture"
+description: "How Omniform is structured: the Rust backend with Tauri IPC commands, the React frontend, and the real-time event system that connects them."
+---
+
+Omniform is a Tauri v2 desktop application. The Rust backend handles all process management, file I/O, archive extraction, and network downloads; the React frontend renders the UI and communicates with the backend exclusively through Tauri's IPC bridge — there is no HTTP server, no WebSocket, and no shared memory between the two layers. Every action the user takes in the UI (adding a URL, picking a folder, cancelling a download) is translated into either a Tauri command call or a state update driven by an incoming Tauri event.
+
+## High-level overview
+
+<CardGroup cols={2}>
+  <Card title="Rust backend" icon="gear">
+    Located in `src-tauri/src/`. Three modules:
+
+    - **`lib.rs`** — app entry point. Registers all five Tauri commands, initialises the four plugins (shell, dialog, fs, clipboard-manager), creates the `DownloadRegistry` shared state, and ensures the binary directory exists on startup.
+    - **`dependencies.rs`** — manages the automatic download and installation of yt-dlp and ffmpeg. Checks whether the binaries are present, fetches them from their respective sources if not, extracts archives in-memory, sets executable permissions on Unix, and emits `deps://status` events throughout.
+    - **`downloads.rs`** — spawns yt-dlp as a child process for each download. Streams stdout line by line to parse progress output, emits `download://progress` events in real time, emits `download://info` after a pre-flight `--dump-json` call, and emits `download://done` or `download://error` on completion.
+  </Card>
+  <Card title="React frontend" icon="browser">
+    Located in `src/`. Three layers:
+
+    - **`App.tsx`** — root shell. Manages the output directory state, calls `get_default_output_dir` on mount, triggers `ensure_dependencies` if either tool is missing, and renders the three main UI sections.
+    - **`useDownloadQueue` hook** — the central state manager. Invokes all Tauri commands and subscribes to all Tauri events. Owns the `items` array (the queue) and the `deps` status object. All other components receive state and callbacks from this hook.
+    - **Components** — `UrlForm` collects the URL, format, and quality from the user; `QueueItem` renders a single download row with its progress bar, title, and action buttons; `DependencyBanner` shows yt-dlp/ffmpeg setup status and a Retry button if setup failed.
+  </Card>
+</CardGroup>
+
+## IPC flow
+
+The following trace shows the complete lifecycle of a single download, from the user clicking the Add button to the file appearing on disk:
+
+```text
+User submits URL in UrlForm
+  → useDownloadQueue.addDownload(url, format, quality, outputDir)
+      → makeId() generates a unique download ID
+      → setItems() adds a new DownloadItem with status "queued"
+      → invoke("start_download", { id, url, format, quality, outputDir })
+
+Rust: lib.rs → downloads::start_download()
+  → emits "download://progress" { status: "fetching-info" }
+  → runs yt-dlp --dump-json to fetch title/thumbnail
+  → emits "download://info" { id, title, thumbnail }
+  → spawns yt-dlp child process for the real download
+  → stores child in DownloadRegistry (keyed by id)
+  → streams stdout, parses OMNIFORM_PROGRESS lines
+  → emits "download://progress" { id, progress, speed, eta, status }
+      (status transitions: "downloading" → "converting" → "done")
+  → on success: emits "download://done" { id, outputPath }
+  → on failure: emits "download://error" { id, message }
+
+Frontend: useDownloadQueue event listeners
+  → listen("download://info")     → setItems() updates title and thumbnail
+  → listen("download://progress") → setItems() updates progress, speed, eta, status
+  → listen("download://done")     → setItems() sets status "done", progress 100
+  → listen("download://error")    → setItems() sets status "error", errorMessage
+  → React re-renders QueueItem with latest state
+```
+
+## Tauri commands
+
+All five commands are registered in `lib.rs` via `tauri::generate_handler!` and are callable from the frontend with `invoke()`.
+
+<CardGroup cols={1}>
+  <Card title="check_dependencies" icon="circle-check">
+    Returns a `DependencyStatus` object (`{ ytDlpReady, ffmpegReady, downloading, message }`) reflecting whether the yt-dlp and ffmpeg binaries currently exist on disk. This is a synchronous check — no network call is made. Called once on mount by `useDownloadQueue`.
+  </Card>
+  <Card title="ensure_dependencies" icon="download">
+    Downloads any missing binaries. Emits `deps://status` events during the process so the frontend can show progress. If both binaries are already present, it emits a single status event and returns immediately. This is the async command triggered by `DependencyBanner` and by `App.tsx` on startup.
+  </Card>
+  <Card title="get_default_output_dir" icon="folder">
+    Returns the system Downloads folder path (falling back to the home directory) as a string. Used by `App.tsx` to pre-populate the output directory on first launch.
+  </Card>
+  <Card title="start_download" icon="play">
+    Accepts `{ id, url, format, quality, outputDir }`. Runs a pre-flight `yt-dlp --dump-json` call, then spawns the full download process. Registers the child process in the `DownloadRegistry` so it can be cancelled. Emits the full sequence of `download://` events until the process exits.
+  </Card>
+  <Card title="cancel_download" icon="stop">
+    Accepts `{ id }`. Looks up the child process in the `DownloadRegistry` by ID, calls `kill()` on it, and removes it from the registry. The frontend sets the item's status to `"cancelled"` optimistically before the kill completes.
+  </Card>
+</CardGroup>
+
+## Event system
+
+The Rust backend emits Tauri events that the frontend listens to via `listen()`. All event payloads include the download `id` so the frontend can match events to the correct queue item. Full payload type definitions are covered in the [Events reference](/reference/events).
+
+| Event | Emitted by | Payload summary |
+|---|---|---|
+| `download://info` | `downloads.rs` | `{ id, title, thumbnail }` — video title and thumbnail URL, fetched before the download starts |
+| `download://progress` | `downloads.rs` | `{ id, progress, speed, eta, status }` — numeric percent, speed string, ETA string, and a `DownloadStatus` string |
+| `download://done` | `downloads.rs` | `{ id, outputPath }` — the output directory path when the download and any conversion are complete |
+| `download://error` | `downloads.rs` | `{ id, message }` — the stderr output from yt-dlp when the process exits with a non-zero status |
+| `deps://status` | `dependencies.rs` | `{ ytDlpReady, ffmpegReady, downloading, message }` — emitted at each stage of the yt-dlp/ffmpeg setup flow |
+
+## Tauri plugin permissions
+
+Permissions are declared in `src-tauri/capabilities/default.json` and apply to the `main` window. The app requests the minimum set of capabilities needed for its features:
+
+| Permission | Why it is needed |
+|---|---|
+| `core:default` | Base Tauri core permissions required by all apps |
+| `dialog:allow-open` | Powers the "Output folder" picker button — opens the native OS directory chooser |
+| `fs:allow-read-file` | Allows the frontend to read files via the `fs` plugin if needed |
+| `fs:allow-write-file` | Allows the frontend to write files via the `fs` plugin if needed |
+| `fs:scope-download-recursive` | Grants the `fs` plugin access to the system Downloads directory tree |
+| `fs:scope-home-recursive` | Grants the `fs` plugin access to the user's home directory tree |
+| `shell:allow-open` | Allows `QueueItem` to open the output folder in the native file manager when a download finishes |
+| `clipboard-manager:allow-read-text` | Allows the app to read the clipboard so it can auto-populate the URL field when the user copies a link |
+
+## Download ID system
+
+Each download is identified by a unique string ID generated entirely in the frontend before the `start_download` command is called:
+
+```typescript
+function makeId(): string {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+```
+
+The ID is passed as a parameter to `start_download` and is echoed back verbatim in the payload of every `download://` event. This allows the `useDownloadQueue` hook to map incoming events to the correct item in the `items` array without any additional coordination — the Rust backend treats the ID as an opaque string and never generates or modifies it.
+
+The `DownloadRegistry` in `downloads.rs` uses this same ID as the key in its `HashMap<String, Arc<Mutex<Child>>>`, which is how `cancel_download` finds the right child process to kill.

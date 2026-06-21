@@ -1,0 +1,186 @@
+---
+title: "Tauri IPC Command Reference for Omniform"
+sidebarTitle: "Tauri Commands"
+description: "Full reference for the five Tauri IPC commands exposed by the Omniform Rust backend, with parameters, return types, and usage examples."
+---
+
+Omniform's Rust backend exposes five commands over Tauri's IPC bridge. The React frontend calls them with `invoke()` from `@tauri-apps/api/core`. All commands are registered in `src-tauri/src/lib.rs` via the `tauri::generate_handler!` macro. Commands that perform I/O or spawn subprocesses are `async`; synchronous commands return immediately. Errors are surfaced as rejected promises containing a plain string message.
+
+---
+
+## `check_dependencies`
+
+Returns the current readiness state of yt-dlp and ffmpeg without attempting to download or install anything. Call this on startup to decide whether to show the dependency setup banner.
+
+<ParamField body="app" type="AppHandle" required>
+  Injected automatically by Tauri — do not pass this from the frontend.
+</ParamField>
+
+**Returns:** `DependencyStatus`
+
+<ResponseField name="ytDlpReady" type="boolean">
+  `true` if the yt-dlp binary is present and executable.
+</ResponseField>
+
+<ResponseField name="ffmpegReady" type="boolean">
+  `true` if the ffmpeg binary is present and executable.
+</ResponseField>
+
+<ResponseField name="downloading" type="boolean">
+  `true` if a dependency download is currently in progress.
+</ResponseField>
+
+<ResponseField name="message" type="string | null">
+  Optional human-readable status string, e.g. `"Downloading yt-dlp…"`. `null`
+  when there is nothing to report.
+</ResponseField>
+
+```typescript
+import { invoke } from "@tauri-apps/api/core";
+import type { DependencyStatus } from "./types";
+
+const status = await invoke<DependencyStatus>("check_dependencies");
+console.log(status.ytDlpReady, status.ffmpegReady);
+```
+
+---
+
+## `ensure_dependencies`
+
+Checks whether yt-dlp and ffmpeg are present and downloads any that are missing. This is an `async` command that emits [`deps://status`](/reference/events#deps-status) events throughout the process so the UI can show progress. Resolves when both tools are ready; rejects with a string error if setup fails.
+
+<ParamField body="app" type="AppHandle" required>
+  Injected automatically by Tauri — do not pass this from the frontend.
+</ParamField>
+
+**Returns:** `Promise<void>` — throws a `string` on failure.
+
+<Note>
+  Listen for `deps://status` events in parallel with this call to display
+  real-time progress in the UI. The promise will not resolve until both
+  binaries are confirmed ready.
+</Note>
+
+```typescript
+import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
+import type { DependencyStatus } from "./types";
+
+// Listen for progress while setup runs
+const unlisten = await listen<DependencyStatus>("deps://status", (e) => {
+  console.log(e.payload.message);
+});
+
+try {
+  await invoke("ensure_dependencies");
+  console.log("Both dependencies are ready.");
+} catch (err) {
+  console.error("Dependency setup failed:", err);
+} finally {
+  unlisten();
+}
+```
+
+---
+
+## `get_default_output_dir`
+
+Returns the absolute path to the system Downloads folder, falling back to the user's home directory if the Downloads folder cannot be determined. Used to pre-populate the output folder field on startup.
+
+**Returns:** `Promise<string>` — throws a `string` error if no valid path can be resolved.
+
+```typescript
+import { invoke } from "@tauri-apps/api/core";
+
+const dir = await invoke<string>("get_default_output_dir");
+setOutputDir(dir);
+```
+
+<Tip>
+  Store the returned path in application state so the user only needs to
+  override it when they want to save files elsewhere.
+</Tip>
+
+---
+
+## `start_download`
+
+Starts downloading a single URL by spawning a yt-dlp child process. Returns immediately after the process is spawned — it does **not** await completion. Progress, metadata, and results are communicated through the [`download://info`](/reference/events#download-info), [`download://progress`](/reference/events#download-progress), [`download://done`](/reference/events#download-done), and [`download://error`](/reference/events#download-error) events.
+
+The spawned process is tracked internally by `id` so it can be cancelled with [`cancel_download`](#cancel_download).
+
+<ParamField body="id" type="string" required>
+  A unique identifier for this download job. This value is echoed back in every
+  event payload so the frontend can correlate events with the correct item in
+  the download queue.
+</ParamField>
+
+<ParamField body="url" type="string" required>
+  The URL of the media to download. Any URL supported by yt-dlp is valid —
+  YouTube, TikTok, Instagram, and thousands of other platforms.
+</ParamField>
+
+<ParamField body="format" type="string" required>
+  The desired output format. Must be one of: `mp4`, `webm`, `mp3`, `wav`,
+  `flac`, `m4a`, `ogg`. See [Supported Formats](/reference/supported-formats)
+  for details.
+</ParamField>
+
+<ParamField body="quality" type="string" required>
+  The desired quality preset. Video formats accept `best`, `1080p`, `720p`, or
+  `480p`. Audio formats accept `high`, `medium`, or `low`. See
+  [Supported Formats](/reference/supported-formats) for the yt-dlp arguments
+  each value maps to.
+</ParamField>
+
+<ParamField body="outputDir" type="string" required>
+  Absolute path to the directory where the finished file will be saved. The
+  directory must exist and be writable.
+</ParamField>
+
+**Returns:** `Promise<void>` — throws a `string` error if yt-dlp is not installed or the process cannot be spawned.
+
+```typescript
+import { invoke } from "@tauri-apps/api/core";
+
+await invoke("start_download", {
+  id: "abc123",
+  url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+  format: "mp3",
+  quality: "high",
+  outputDir: "/Users/alice/Downloads",
+});
+```
+
+<Warning>
+  Ensure `ensure_dependencies` has resolved successfully before calling
+  `start_download`. If yt-dlp is absent, the command will reject with an error
+  string.
+</Warning>
+
+---
+
+## `cancel_download`
+
+Kills the yt-dlp process associated with the given `id`. If the ID is not found — because the download has already finished or was never started — this call is a no-op and still resolves successfully.
+
+After cancellation the download status transitions to `"cancelled"`. No `download://error` event is emitted for a clean cancellation.
+
+<ParamField body="id" type="string" required>
+  The ID of the download to cancel. Must match the `id` passed to
+  `start_download`.
+</ParamField>
+
+**Returns:** `Promise<void>`
+
+```typescript
+import { invoke } from "@tauri-apps/api/core";
+
+await invoke("cancel_download", { id: "abc123" });
+```
+
+<Note>
+  Cancellation is best-effort. If the yt-dlp process has already exited between
+  the time you call `cancel_download` and when the kill signal is sent, the
+  command still resolves without error.
+</Note>

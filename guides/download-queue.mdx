@@ -1,0 +1,80 @@
+---
+title: "Managing the Omniform Download Queue"
+sidebarTitle: "Download Queue"
+description: "How the Omniform download queue works, including item states, cancellation, error handling, and clearing finished downloads."
+---
+
+The download queue is the central panel of Omniform. It shows every download you have added in the current session, with live status updates as each item moves through the pipeline from initial queueing to a finished file on disk. You can cancel active downloads, remove completed ones individually, or clear all finished entries at once.
+
+## Queue item states
+
+Each item in the queue displays a status label that reflects exactly what Omniform is doing at that moment. The table below describes every possible state.
+
+| Status value | Label shown | What it means |
+|---|---|---|
+| `queued` | Queued | The item has been added to the queue and is about to start processing. |
+| `fetching-info` | Fetching info... | Omniform is running yt-dlp with `--dump-json` to retrieve the video title and thumbnail from the platform. Once this completes the item updates with the real title and a thumbnail image. |
+| `downloading` | Downloading | The file transfer is in progress. The item shows a live progress bar, download speed, and ETA. |
+| `converting` | Converting | yt-dlp has finished downloading and ffmpeg is post-processing the file — merging streams (for video formats) or extracting and re-encoding audio (for audio formats). |
+| `done` | Done | The file has been saved to your configured output folder. |
+| `error` | Error | The download failed. The error message from yt-dlp's stderr is displayed below the item title. |
+| `cancelled` | Cancelled | The download was cancelled by the user. |
+
+### What each item displays
+
+Every queue row shows:
+
+- **Thumbnail** — the video's platform thumbnail (or a placeholder while it is being fetched)
+- **Title** — the video's metadata title once fetched, or the raw URL before that completes
+- **Format badge** — the chosen output format (e.g. `MP4`, `MP3`)
+- **Status label** — the current state from the table above
+- **Speed and ETA** — shown only during the `downloading` state
+- **Progress bar** — fills from 0 % to 100 % during the download phase
+
+## Cancelling a download
+
+Any item that is still actively being processed can be cancelled. Active states are: **Queued**, **Fetching info**, **Downloading**, and **Converting**. Items in these states display a **Cancel** button on the right side of the row.
+
+Clicking **Cancel** sends a kill signal to the underlying yt-dlp process. The item immediately transitions to **Cancelled** status. Partially downloaded intermediate files may remain in your output folder — these are temporary working files left by yt-dlp and can be safely deleted.
+
+<Note>
+  Once a download reaches **Done** status it cannot be cancelled — the file has
+  already been written to disk. Use the **Remove** button to remove it from the
+  queue list instead.
+</Note>
+
+## Removing items
+
+Items that have reached a terminal state — **Done** or **Cancelled** (as well as **Error**) — display a **Remove** button instead of Cancel.
+
+<CardGroup cols={2}>
+  <Card title="Remove (individual)" icon="trash">
+    Click the **Remove** button on a finished, cancelled, or errored item to remove that single entry from the queue list. This does not delete the downloaded file from disk.
+  </Card>
+  <Card title="Clear finished" icon="broom">
+    The **Clear finished** button appears at the top of the queue section whenever at least one item has a status of **Done** or **Cancelled**. Clicking it removes all such items from the list in one action.
+  </Card>
+</CardGroup>
+
+## Error handling
+
+When a download fails, the item transitions to **Error** status and the error message captured from yt-dlp's stderr is displayed directly below the item's title in the queue row. Common causes of download errors include:
+
+- **Invalid or unsupported URL** — the link does not point to a downloadable resource
+- **Geo-restricted content** — the video is not available in your region
+- **Private or deleted video** — the content requires authentication or has been removed
+- **Network failure** — a connection timeout or interruption during the download
+- **Rate limiting** — the platform is throttling requests from your IP
+
+<Tip>
+  For more detailed troubleshooting steps, including how to handle geo-restrictions
+  and authentication-required content, see the [Troubleshooting](/reference/troubleshooting) reference page.
+</Tip>
+
+If the yt-dlp process exits with a non-zero status but produces no stderr output (for example, when the process is killed externally), Omniform treats the item as **Cancelled** rather than **Error**.
+
+## Multiple downloads
+
+All items in the queue run concurrently — there is no built-in serialization or queue limit. Each download spawns an independent yt-dlp process as soon as it is added, so adding five items starts five downloads simultaneously.
+
+Keep in mind that running many downloads at once will share your available bandwidth and may cause each individual download to progress more slowly. If your connection or the source platform throttles concurrent requests, you may see slower speeds or temporary errors on some items.

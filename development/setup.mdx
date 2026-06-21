@@ -1,0 +1,114 @@
+---
+title: "Set Up the Omniform Development Environment"
+sidebarTitle: "Dev Setup"
+description: "Configure your local machine for Omniform development: install Node.js 18+, Rust via rustup, Tauri prerequisites, and run the app in dev mode."
+---
+
+This page covers everything you need to run Omniform locally for development. The stack is Tauri v2 (Rust backend) combined with a React 18 TypeScript frontend built with Vite 6. The Rust side handles all process management, file I/O, and binary downloads; the frontend handles the UI and communicates with Rust over Tauri's IPC bridge. Both halves are compiled and launched together with a single CLI command.
+
+## Prerequisites
+
+You need three things installed before you can run Omniform:
+
+- **Node.js 18 or later** — [https://nodejs.org](https://nodejs.org)
+- **Rust (via rustup)** — [https://rustup.rs](https://rustup.rs)
+- **Tauri system dependencies** — varies by platform; follow the official prerequisites guide at [https://tauri.app/start/prerequisites/](https://tauri.app/start/prerequisites/)
+
+The platform-specific system dependencies are the most common sticking point. The short version:
+
+<Tabs>
+  <Tab title="Windows">
+    Tauri on Windows requires:
+
+    - **WebView2** — ships pre-installed on Windows 10 (version 1803+) and Windows 11. If it is missing, the Tauri prerequisites page links to the Microsoft installer.
+    - **Microsoft C++ Build Tools** — part of Visual Studio Build Tools or the full Visual Studio IDE. You need the "Desktop development with C++" workload.
+
+    Refer to the [Tauri Windows prerequisites](https://tauri.app/start/prerequisites/#windows) for exact steps and download links.
+  </Tab>
+  <Tab title="macOS">
+    Tauri on macOS requires:
+
+    - **Xcode Command Line Tools** — install via `xcode-select --install` in your terminal, or download from [developer.apple.com](https://developer.apple.com/download/all/).
+
+    Refer to the [Tauri macOS prerequisites](https://tauri.app/start/prerequisites/#macos) for any additional requirements.
+  </Tab>
+  <Tab title="Linux">
+    Tauri on Linux requires several system packages, primarily **libwebkit2gtk**, **libgtk**, and related GTK/GLib libraries. The exact package names differ between distributions (apt, dnf, pacman, etc.).
+
+    Refer to the [Tauri Linux prerequisites](https://tauri.app/start/prerequisites/#linux) for the complete per-distro package lists.
+  </Tab>
+</Tabs>
+
+## Getting the source
+
+Clone the repository from GitHub:
+
+```bash
+git clone https://github.com/damianiglesias/omniform.git
+cd omniform
+```
+
+## Install dependencies
+
+<Steps>
+  <Step title="Install JavaScript/TypeScript dependencies">
+    From the project root (the directory containing `package.json`), run:
+
+    ```bash
+    npm install
+    ```
+
+    This installs React, the Tauri JS API, Vite, TypeScript, and all other frontend dependencies declared in `package.json`.
+  </Step>
+  <Step title="Rust dependencies are resolved automatically">
+    You do not need to run `cargo install` separately. When you run the Tauri CLI for the first time (next step), Cargo reads `src-tauri/Cargo.toml` and downloads all Rust crate dependencies automatically.
+  </Step>
+</Steps>
+
+## Run in development mode
+
+```bash
+npm run tauri dev
+```
+
+This command does two things in parallel: it starts the Vite development server for the React frontend (with hot module replacement so UI changes appear instantly without restarting the app), and it compiles the Rust backend with `cargo`. Once both are ready, a native desktop window opens running the app.
+
+On the very first launch, Omniform detects that yt-dlp and ffmpeg are not yet present and downloads them automatically into the app's data directory. The window will show a setup banner while this happens — no action is needed on your part.
+
+<Info>
+  The first `npm run tauri dev` may take **several minutes** while Cargo downloads and compiles all Rust crate dependencies from scratch. Subsequent runs use the incremental build cache and start much faster.
+</Info>
+
+## Project structure
+
+```text
+omniform/
+├── src/                    # React frontend (TypeScript)
+│   ├── App.tsx             # Root component — layout, output dir, dep check
+│   ├── main.tsx            # React entry point
+│   ├── App.css             # Global styles
+│   ├── components/         # UrlForm, QueueItem, DependencyBanner
+│   ├── hooks/              # useDownloadQueue — central state and IPC
+│   └── types/              # Shared TypeScript type definitions
+├── src-tauri/
+│   ├── src/
+│   │   ├── lib.rs          # Tauri command registration and app setup
+│   │   ├── downloads.rs    # Download process management and events
+│   │   └── dependencies.rs # yt-dlp and ffmpeg auto-download and install
+│   ├── Cargo.toml          # Rust manifest and release profile
+│   ├── tauri.conf.json     # Tauri app configuration
+│   └── capabilities/       # Tauri permission declarations
+├── package.json            # JS dependencies and npm scripts
+└── index.html              # Vite HTML entry point
+```
+
+| Path | Purpose |
+|---|---|
+| `src/App.tsx` | Root React component. Handles output directory selection and kicks off the dependency check on mount. |
+| `src/hooks/useDownloadQueue.ts` | Custom hook that owns all download state, invokes Tauri commands, and subscribes to Tauri events. |
+| `src/components/` | `UrlForm` for URL/format/quality input; `QueueItem` for rendering each download row; `DependencyBanner` for showing setup status. |
+| `src/types/index.ts` | TypeScript interfaces shared across the frontend: `DownloadItem`, `DependencyStatus`, all event payload types. |
+| `src-tauri/src/lib.rs` | Registers all five Tauri commands and initialises plugins, the `DownloadRegistry`, and the binary directory. |
+| `src-tauri/src/downloads.rs` | Spawns yt-dlp child processes, streams stdout progress lines, and emits `download://` events back to the frontend. |
+| `src-tauri/src/dependencies.rs` | Checks whether yt-dlp and ffmpeg are present, downloads them if not, extracts archives, and emits `deps://status` events. |
+| `src-tauri/capabilities/` | JSON files that declare which Tauri plugin permissions the app is granted (filesystem, dialog, shell, clipboard). |

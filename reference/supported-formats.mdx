@@ -1,0 +1,86 @@
+---
+title: "Supported Formats and Quality Options Reference"
+sidebarTitle: "Formats"
+description: "Complete reference for all video and audio output formats and quality levels supported by Omniform, including the yt-dlp arguments used internally."
+---
+
+Omniform supports seven output formats divided into two categories — video and audio. Video formats preserve the visual stream alongside audio, while audio formats extract only the audio track using yt-dlp's `-x` flag and re-encode it via ffmpeg. Each category has its own quality dimension: resolution for video and bitrate (VBR level) for audio.
+
+## Output formats
+
+The table below lists every format Omniform exposes in its UI and the internal details of each.
+
+| Format | Kind  | Extension | Description                                               |
+| ------ | ----- | --------- | --------------------------------------------------------- |
+| mp4    | Video | .mp4      | H.264 video + AAC audio, merged via ffmpeg                |
+| webm   | Video | .webm     | VP9/Opus open web format                                  |
+| mp3    | Audio | .mp3      | Lossy, universal compatibility                            |
+| wav    | Audio | .wav      | Uncompressed PCM, lossless, large files                   |
+| flac   | Audio | .flac     | Lossless compression                                      |
+| m4a    | Audio | .m4a      | AAC in MPEG-4 container                                   |
+| ogg    | Audio | .ogg      | Vorbis, open format, good for web and games               |
+
+## Video quality options
+
+Video quality is expressed as a maximum resolution. Omniform translates each option into a yt-dlp format selector that prefers an MP4 container with an M4A audio stream, falling back to the best combined stream if no matching format is available.
+
+| Value | Label          | yt-dlp format selector                                                     |
+| ----- | -------------- | -------------------------------------------------------------------------- |
+| best  | Best available | `bestvideo[ext=mp4]+bestaudio[ext=m4a]/best`                               |
+| 1080p | 1080p          | `bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/best[height<=1080]`   |
+| 720p  | 720p           | `bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[height<=720]`     |
+| 480p  | 480p           | `bestvideo[height<=480][ext=mp4]+bestaudio[ext=m4a]/best[height<=480]`     |
+
+<Note>
+  The `best` selector does not cap resolution. Use it when you want the highest
+  quality the source provides, regardless of file size.
+</Note>
+
+## Audio quality options
+
+Audio quality maps to yt-dlp's `--audio-quality` flag, which uses VBR level numbers where **0 is best** and **10 is worst**. Omniform exposes three presets covering the most practical range.
+
+| Value  | Label  | yt-dlp `--audio-quality` | Approximate bitrate |
+| ------ | ------ | ------------------------- | ------------------- |
+| high   | High   | 0 (VBR best)              | ~320 kbps           |
+| medium | Medium | 2                         | ~160 kbps           |
+| low    | Low    | 5                         | ~96 kbps            |
+
+<Note>
+  The exact bitrate depends on the source material and codec. VBR quality level
+  0 targets the best achievable quality for the chosen format, not a fixed
+  320 kbps. Actual file size will vary accordingly.
+</Note>
+
+## Audio extraction flags
+
+When any audio format is selected, Omniform passes the following yt-dlp flags to extract and re-encode the audio stream:
+
+```
+yt-dlp -x --audio-format <format> --audio-quality <quality> <url>
+```
+
+For example, to extract a high-quality MP3:
+
+```bash
+yt-dlp -x --audio-format mp3 --audio-quality 0 https://www.youtube.com/watch?v=dQw4w9WgXcQ
+```
+
+The `-x` flag instructs yt-dlp to discard the video stream after download. ffmpeg is then invoked automatically by yt-dlp to convert the raw audio into the requested format.
+
+## TypeScript type reference
+
+The `OutputFormat` and `Quality` union types in `src/types/index.ts` are the single source of truth for valid values passed to the [`start_download`](/reference/tauri-commands#start_download) command.
+
+```typescript
+type OutputFormat = "mp4" | "mp3" | "wav" | "flac" | "m4a" | "webm" | "ogg";
+
+type Quality = "best" | "1080p" | "720p" | "480p" | "high" | "medium" | "low";
+```
+
+<Warning>
+  Passing a `quality` value from the video set (e.g. `"1080p"`) alongside an
+  audio `format` (e.g. `"mp3"`) — or vice versa — will produce unexpected
+  results. Always pair video formats with video quality values and audio formats
+  with audio quality values.
+</Warning>

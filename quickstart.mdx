@@ -1,47 +1,71 @@
 ---
-title: "Quickstart"
-description: "Begin with a guide on the fastest path to a successful outcome"
+title: "Get Started with Omniform in Minutes"
+sidebarTitle: "Quickstart"
+description: "From a fresh checkout to your first successful video download — set up Omniform, launch it, and convert your first file in five steps."
 ---
 
-Describe how someone begins using your product. What is the first thing they need to do? Are there any prerequisites?
+This page walks you through everything from a fresh Omniform checkout to a completed download with a converted file sitting in your output folder. It assumes you have Node.js 18+ and Rust already installed on your machine. If you haven't set those up yet, start with the installation guide first.
 
-A quickstart should take someone from zero to using your product. They'll get a quick win and a sense of what they can accomplish.
+<Info>
+  Need to install Node.js, Rust, or the Tauri system prerequisites first? See the [Installation](/installation) page for full setup instructions.
+</Info>
 
-## Prerequisites
-
-Before you begin, you must have:
-
-- Requirement one (for example, Node.js 18+, a free account, an API key)
-- Requirement two (for example, a compatible device, a compatible browser, a compatible operating system)
-
-## Get started
+## Your first download
 
 <Steps>
-  <Step title="Install">
-    Describe how to install your product or sign up.
+  <Step title="Clone and install">
+    Clone the repository and install all npm dependencies in one go:
 
     ```bash
-    npm install your-package
+    git clone https://github.com/damianiglesias/omniform.git && cd omniform && npm install
     ```
+
+    This clones the repo, moves into it, and installs the React frontend dependencies along with the Tauri CLI.
   </Step>
-  <Step title="Configure">
-    Describe any setup or configuration needed before first use.
+  <Step title="Start the app">
+    Launch Omniform in development mode:
 
     ```bash
-    your-cli init
+    npm run tauri dev
     ```
+
+    Tauri compiles the Rust backend, starts the Vite dev server, and opens the app window. On this first run, Omniform will detect that yt-dlp and ffmpeg are not yet present and automatically download them. A **dependency banner** appears at the top of the window showing the current download status (e.g. "Downloading yt-dlp..." followed by "Downloading ffmpeg..."). Wait for the banner to disappear — once it does, both tools are ready and the download queue is active.
   </Step>
-  <Step title="Run it">
-    Show the first thing a user does to see it working.
+  <Step title="Set your output folder">
+    Click the **output folder** button in the interface and choose a directory where downloaded and converted files will be saved. If you skip this step, Omniform uses your system's default Downloads folder automatically (resolved via `dirs::download_dir()`).
+  </Step>
+  <Step title="Paste a URL and pick your settings">
+    Copy a URL from YouTube, TikTok, Instagram, or any other yt-dlp-supported site. When you focus the Omniform window, it reads your clipboard and pre-fills the URL field automatically — no manual pasting required.
 
-    ```bash
-    your-cli start
-    ```
+    Next, choose your output settings:
+
+    - **Format** — select a video format (MP4, WebM) or an audio format (MP3, WAV, FLAC, M4A, OGG).
+    - **Quality** — for video, choose from Best, 1080p, 720p, or 480p. For audio, choose from High (320 kbps), Medium (160 kbps), or Low (96 kbps).
+
+    When you're ready, click **Add to queue**.
+  </Step>
+  <Step title="Watch the queue">
+    The download queue shows each active job with:
+
+    - **Real-time progress** — a progress bar showing how much of the file has been downloaded
+    - **Speed** — the current download speed
+    - **ETA** — the estimated time until the download completes
+
+    When the job finishes, the converted file is written to your chosen output folder. If you need to stop a download early, use the cancel button on the queue item — it stops only that job without affecting any other active downloads.
   </Step>
 </Steps>
 
 <Tip>
-  Give people a way to get help. This could be a link to a support page, a chat with a customer support agent, or a forum for your product.
-
-  Example: Need help? Reach out to us at [support@yourcompany.com](mailto:support@yourcompany.com).
+  Omniform checks your clipboard every time the app window receives focus. If you copy a YouTube or TikTok URL **before** you open or switch to the app, the URL will already be in the input field when you get there — no need to paste it manually.
 </Tip>
+
+## What's next
+
+<CardGroup cols={2}>
+  <Card title="Formats & Quality" icon="film" href="/guides/formats-and-quality">
+    Learn every format option and when to use each one.
+  </Card>
+  <Card title="Download Queue" icon="list-check" href="/guides/download-queue">
+    Understand queue behavior, cancellation, and error handling.
+  </Card>
+</CardGroup>

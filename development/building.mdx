@@ -1,0 +1,97 @@
+---
+title: "Build Omniform for Production Distribution"
+sidebarTitle: "Building"
+description: "Compile and package Omniform into a native installer for Windows, macOS, or Linux using the Tauri CLI build command."
+---
+
+Omniform uses the Tauri CLI to compile the Rust backend and bundle the React frontend into a native installer. The build process has two stages that run back-to-back: first the frontend is compiled by TypeScript and Vite into static assets, then Cargo compiles the Rust backend in release mode, and finally Tauri bundles everything into the installer format that is native to the platform you build on.
+
+## Build command
+
+```bash
+npm run tauri build
+```
+
+The `tauri` script in `package.json` delegates to the Tauri CLI. Under the hood this is equivalent to:
+
+1. `tsc && vite build` — type-checks the TypeScript source and bundles the React app into `dist/`.
+2. `cargo build --release` — compiles the Rust backend with the release profile.
+3. Tauri bundler — packages the compiled frontend assets and the Rust binary into a platform-native installer.
+
+<Note>
+  Building for the first time compiles all Rust crates from scratch and may take **5–15 minutes** depending on your machine. Incremental rebuilds are significantly faster.
+</Note>
+
+## Output locations
+
+The finished installer is written to `src-tauri/target/release/bundle/`. The format depends on the platform you run the build on:
+
+| Platform | Output formats |
+|---|---|
+| Windows | `.msi` (WiX), `.exe` (NSIS) |
+| macOS | `.dmg`, `.app` |
+| Linux | `.deb`, `.AppImage` |
+
+<Note>
+  You must build **on** the target platform. Tauri's bundler does not support cross-compilation — a macOS build machine cannot produce a Windows `.msi`, and vice versa. Use CI runners or platform-specific machines for multi-platform distribution.
+</Note>
+
+## Release profile
+
+`src-tauri/Cargo.toml` defines a release profile optimised for binary size:
+
+```toml
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true
+```
+
+| Flag | Effect |
+|---|---|
+| `panic = "abort"` | Instead of unwinding the stack on a panic, the process aborts immediately. Removes the unwinding machinery from the binary. |
+| `codegen-units = 1` | Compiles the entire crate as a single unit, giving LLVM maximum visibility for cross-function optimisation. Slower to compile, smaller and faster output. |
+| `lto = true` | Enables Link-Time Optimisation across all crates. Allows the linker to eliminate dead code and inline across crate boundaries. |
+| `opt-level = "s"` | Optimises for binary size rather than maximum speed (`"z"` is even more aggressive; `3` is fastest). |
+| `strip = true` | Strips debug symbols from the final binary, significantly reducing file size. |
+
+## App icon
+
+The `src-tauri/icons/` directory ships with placeholder icons — flat-colour squares that allow the project to compile without errors. Before shipping a real build, replace them with your actual logo:
+
+<Steps>
+  <Step title="Prepare your logo file">
+    Create or export a square PNG image, at least **1024×1024 px**, with a transparent background. This single source image is used to generate every required icon format.
+  </Step>
+  <Step title="Generate all icon sizes">
+    Run the Tauri icon generator, pointing at your logo:
+
+    ```bash
+    npm run tauri icon path/to/logo.png
+    ```
+
+    This automatically generates every required format — `.ico` for Windows, `.icns` for macOS, and PNGs at multiple resolutions — and places them in `src-tauri/icons/`.
+  </Step>
+  <Step title="Restore icon.ico and icon.icns in tauri.conf.json">
+    If `icons/icon.ico` and `icons/icon.icns` were removed from the `icon` list in `src-tauri/tauri.conf.json`, add them back:
+
+    ```json
+    "bundle": {
+      "icon": [
+        "icons/32x32.png",
+        "icons/128x128.png",
+        "icons/128x128@2x.png",
+        "icons/icon.ico",
+        "icons/icon.icns"
+      ]
+    }
+    ```
+
+    Step 2 already generated these files in `src-tauri/icons/` — this step just makes sure they are referenced in the config.
+  </Step>
+  <Step title="Rebuild">
+    Run `npm run tauri build` again. The installer will now include your real app icon.
+  </Step>
+</Steps>
